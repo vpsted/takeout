@@ -1,0 +1,84 @@
+1.创建SpringBoot启动类Application
+2.放行静态资源
+3.根据需要创建实体类
+4.mapper下创建接口，并继承mybatisplus，由mybatis-plus实现简化开发
+5.service下创建接口，继承IService，由mybatis-plus实现
+6.service.impl下创建实现类，继承ServiceImpl<EmployeeMapper,Employee>,由mybatis-plus实现,实现EmployeeService
+  添加@Service注解，由spring实现
+7.controller下创建EmployeeController:
+    1.添加@Slf4j，lombok实现，进行日志记录
+    2.添加@RestController，MVC实现，等于@Controller + @ReponseBody，ReponseBody原本是添加在每一个函数上，过于繁琐
+    3.添加@RequestMapping("/employees")，MVC实现，RESTful风格：
+        之前不同的请求有不同的路径,现在要将其修改为统一的请求路径
+        修改前: 新增: /save ,修改: /update,删除 /delete...
+        修改后: 增删改查: /employees
+        根据GET查询、POST新增、PUT修改、DELETE删除对方法的请求方式进行限定
+
+        @RequestMapping(value="/users/{id}",method = RequestMethod.DELETE)
+        区别
+        @RequestParam用于接收url地址传参或表单传参
+        @RequestBody用于接收json数据
+        @PathVariable用于接收路径参数，使用{参数名称}描述路径参数
+        应用
+        后期开发中，发送请求参数超过1个时，以json格式为主，@RequestBody应用较广
+        如果发送非json格式数据，选用@RequestParam接收请求参数
+        采用RESTful进行开发，当参数数量较少时，例如1个，可以采用@PathVariable接收请求路 径变量，通常用于传递id值
+8.创建通用的返回结果类，其成员变量一般包括编码，消息，数据
+
+9.请求拦截，使用过滤器(javaWeb)或者拦截器(SpringMVC)，可以实现权限控制
+    这里创建过滤器filter包
+    过滤器类要@WebFilter，指定filterName和过滤范围urlPatterns
+    类要实现Filter接口，并重写Filter中的抽象方法doFilter
+    SpringBoot启动类Application要添加注解@ServletComponentScan,使他能扫描WebFilter注解，从而扫描的过滤器实现类
+10.新增员工功能及重复添加的SQL异常处理
+    common包下创建全局异常捕获GlobalExceptionHandler,
+        添加@ControllerAdvice注解，通过annotations属性指定哪些类中发生异常需要处理
+        添加@ResponseBody注解，因为有json数据返回
+        创建异常处理函数，函数上添加@ExceptionHandler注解,添加指定要处理的异常类型
+11.员工信息分页查询
+    配置MP的分页插件配置类
+    添加@Configuration注解
+    添加拦截器函数，并添加@Bean注解
+
+    EmployeeController类中创建分页查询函数
+    返回类型为R<Page>，Page为MP中的类型
+    由MP分页插件的分页构造器和条件构造器实现分页查询
+12.创建update函数用于员工数据更新
+    出现了js遗失long型精度的问题，服务端通过将long型转换为String类型返回
+    创建对象映射器，实现json与java对象的转换
+    在WebMvcConfig中创建消息转换器函数
+
+Day3
+1.基本上每个表都有记录的创建时间、创建人，修改时间修改人这些字段要设置，属于公共功能，统一处理可以简化开发
+    MP提供了公共字段自动填充功能
+    实体类的属性上(如createTime，updateTime等属性)添加@TableField注解，
+    指定自动填充策略如@TableField(fill = FieldFill.INSERT)
+    按照MP框架要求编写元数据对象处理器，在此类中统一为公共字段赋值，此类需要实现MetaObjectHandler接口
+    即common包中创建MyMetaObjectHandler实现MetaObjectHandler接口，重写各种填充函数
+    MyMetaObjectHandler不能获取Session，所以要通ThreadLocal获取当前登录用户id
+    因为对于客户端的每一次http请求，服务端都会分配一个新的线程来处理，处理该线程过程中的
+    LoginCheckFilter的doFilter方法，EmployeeController的update方法，MyMetaObjectHandler的方法等都属于同一个线程
+    可以通过 long id = Thread.currentThread().getId(); 获取当前线程id
+    ThreadLocal是Thread的局部变量，为每一个使用该变量的线程提供独立的副本和单独存储空间，只有线程内才能调用对应值，实现了线程隔离
+    创建ThreadLocal工具类，用户保存和获取当前登录id到ThreadLocal中保存，以便随时调用
+Day4
+1.文件上传，请求规定为post类型
+    可以采用MultipartFile类型实现
+    controller包下创建CommonController类实现文件的上传和下载
+    可以在yml配置文件地址，方便全局修改，
+    @Value("${takeout.path}")
+    private String PATH;
+2.文件下载，get
+3. 新增菜品
+    添加口味类及其相关
+    添加DishController，DishFlavor的相关控制也添加在DishController中
+    对list中的每一个元素进行操作
+        List<DishFlavor> flavors = dishDto.getFlavors();
+        flavors=flavors.stream().map((item) -> {
+          item.setDishId(dishId);
+          return item;
+        }).collect(Collectors.toList());
+    由于新增菜品功能涉及多个表，所以开启事务，函数上添加  @Transactional
+    Application类添加@EnableTransactionManagement
+Day5
+1.创建SetmealDish系列文件，创建SetmealController类对Setmeal和SetmealDish进行操作
