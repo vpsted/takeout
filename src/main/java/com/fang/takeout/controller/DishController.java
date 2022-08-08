@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fang.takeout.common.R;
 import com.fang.takeout.dto.DishDto;
-import com.fang.takeout.entity.Category;
 import com.fang.takeout.entity.Dish;
 import com.fang.takeout.entity.DishFlavor;
 import com.fang.takeout.service.CategoryService;
@@ -12,11 +11,10 @@ import com.fang.takeout.service.DishFlavorService;
 import com.fang.takeout.service.DishService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Collections;
 import java.util.List;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @RestController
@@ -36,6 +34,7 @@ public class DishController {
    * @return
    */
   @PostMapping
+  @CacheEvict(value = "dishCache",allEntries = true)
   public R<String> save(@RequestBody DishDto dishDto) {
     dishService.saveWithFlavor(dishDto);
     return R.success("新增菜品成功");
@@ -82,6 +81,7 @@ public class DishController {
    * @return
    */
   @GetMapping("/{id}")
+  @Cacheable(value = "dishCache",key = "'oneDish'+#id")
   public R<DishDto> getById(@PathVariable Long id) {
     DishDto dishDto = dishService.getByIdWithFlavor(id);
     return R.success(dishDto);
@@ -94,12 +94,14 @@ public class DishController {
    * @return
    */
   @PutMapping
+  @CacheEvict(value = "dishCache",allEntries = true)
   public R<String> update(@RequestBody DishDto dishDto) {
     dishService.updateWithFlavor(dishDto);
     return R.success("修改菜品成功");
   }
 
   @DeleteMapping
+  @CacheEvict(value = "dishCache",allEntries = true)
   public R<String> delete(@RequestParam("ids") List<Long> ids) {
     dishService.deleteWithFlavor(ids);
     return R.success("删除菜品成功");
@@ -113,6 +115,7 @@ public class DishController {
    * @return
    */
   @PostMapping("/status/{status}")
+  @CacheEvict(value = "dishCache",allEntries = true)
   public R<String> updateStatus(@PathVariable int status, @RequestParam("ids") List<Long> ids) {
     LambdaQueryWrapper<Dish> lambdaQueryWrapper = new LambdaQueryWrapper<>();
     lambdaQueryWrapper.in(ids != null, Dish::getId, ids);
@@ -134,9 +137,10 @@ public class DishController {
    * @return
    */
   @GetMapping("/list")
+  @Cacheable(value = "dishCache",key = "#dish.categoryId")
   public R<List<DishDto>> list(Dish dish) {
     LambdaQueryWrapper<Dish> lambdaQueryWrapper = new LambdaQueryWrapper<>();
-    lambdaQueryWrapper.eq(dish.getCategoryId()!=null,Dish::getCategoryId, dish.getCategoryId());
+    lambdaQueryWrapper.eq(dish.getCategoryId() != null, Dish::getCategoryId, dish.getCategoryId());
     //停售的菜品不显示,只查询起售(status=1)的菜品
     lambdaQueryWrapper.eq(Dish::getStatus, 1);
     List<Dish> dishList = dishService.list(lambdaQueryWrapper);
@@ -149,10 +153,9 @@ public class DishController {
       List<DishFlavor> dishFlavorList = dishFlavorService.list(flavorLambdaQueryWrapper);
       DishDto dishDto = new DishDto();
       dishDto.setFlavors(dishFlavorList);
-      BeanUtils.copyProperties(item,dishDto);
+      BeanUtils.copyProperties(item, dishDto);
       return dishDto;
     }).collect(Collectors.toList());
-
     return R.success(dishDtoList);
   }
 }
