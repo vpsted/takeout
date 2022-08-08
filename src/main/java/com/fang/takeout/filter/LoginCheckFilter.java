@@ -39,7 +39,12 @@ public class LoginCheckFilter implements Filter {
             "/common/**",
             "/user/sendMsg",
             "/user/login",
-            "/user/loginout"
+            "/user/loginout",
+            //swagger相关
+            "/doc.html",
+            "/webjars/**",
+            "/swagger-resources",
+            "/v2/api-docs"
     };
 
     //2.判断本次请求是否需要放行

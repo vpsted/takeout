@@ -34,6 +34,8 @@ public class WebMvcConfig extends WebMvcConfigurationSupport {
   protected void addResourceHandlers(ResourceHandlerRegistry registry) {
     log.info("进行静态资源映射");
 //    将前者映射到后者，classpath指的是java和resources两个文件夹
+    registry.addResourceHandler("doc.html").addResourceLocations("classpath:/META-INF/resources/");
+    registry.addResourceHandler("/webjars/**").addResourceLocations("classpath:/META-INF/resources/webjars/");
     registry.addResourceHandler("/backend/**").addResourceLocations("classpath:/backend/");
     registry.addResourceHandler("/front/**").addResourceLocations("classpath:/front/");
   }
